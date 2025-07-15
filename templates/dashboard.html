@@ -1,0 +1,1018 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - EMR System{% endblock %}
+
+{% block content %}
+<div id="alerts-container"></div>
+
+<!-- Patient Search Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-search"></i> Patient Search</h5>
+                <a href="{{ url_for('add_patient') }}" class="btn btn-success">
+                    <i class="fas fa-user-plus"></i> Add New Patient
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="position-relative">
+                            <input type="text" id="patient-search" class="form-control form-control-lg" 
+                                   placeholder="Search patients by name..." autocomplete="off">
+                            <div id="search-results" class="search-results" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="selected-patient-info" class="patient-info" style="display: none;">
+                            <h6>Selected Patient:</h6>
+                            <div id="patient-summary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Details Section -->
+<div id="patient-details" style="display: none;">
+    <!-- Demographics Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card section-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-user"></i> Demographics</h5>
+                    <button class="btn btn-outline-light btn-sm" onclick="toggleEdit('demographics')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="demographics-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medical Information Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card section-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-stethoscope"></i> Medical Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-3" id="medical-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="medications-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#medications" type="button" role="tab">
+                                <i class="fas fa-pills"></i> Medications
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="conditions-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#conditions" type="button" role="tab">
+                                <i class="fas fa-heartbeat"></i> Conditions
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="diagnosis-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#diagnosis" type="button" role="tab">
+                                <i class="fas fa-diagnosis"></i> Diagnosis
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="clinical-notes-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#clinical-notes" type="button" role="tab">
+                                <i class="fas fa-notes-medical"></i> Clinical Notes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="allergies-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#allergies" type="button" role="tab">
+                                <i class="fas fa-exclamation-triangle"></i> Allergies
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="immunizations-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#immunizations" type="button" role="tab">
+                                <i class="fas fa-syringe"></i> Immunizations
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="appointments-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#appointments" type="button" role="tab">
+                                <i class="fas fa-calendar-alt"></i> Appointments
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="medical-tab-content">
+                        <div class="tab-pane fade show active" id="medications" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Current Medications</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('medications')">
+                                    <i class="fas fa-plus"></i> Add Medication
+                                </button>
+                            </div>
+                            <div id="medications-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="conditions" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Medical Conditions</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('conditions')">
+                                    <i class="fas fa-plus"></i> Add Condition
+                                </button>
+                            </div>
+                            <div id="conditions-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="diagnosis" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Diagnosis History</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('diagnosis')">
+                                    <i class="fas fa-plus"></i> Add Diagnosis
+                                </button>
+                            </div>
+                            <div id="diagnosis-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="clinical-notes" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Clinical Notes</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('clinical_notes')">
+                                    <i class="fas fa-plus"></i> Add Note
+                                </button>
+                            </div>
+                            <div id="clinical-notes-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="allergies" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Known Allergies</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('allergies')">
+                                    <i class="fas fa-plus"></i> Add Allergy
+                                </button>
+                            </div>
+                            <div id="allergies-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="immunizations" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Immunization Records</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('immunizations')">
+                                    <i class="fas fa-plus"></i> Add Immunization
+                                </button>
+                            </div>
+                            <div id="immunizations-content"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="appointments" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Scheduled Appointments</h6>
+                                <button class="btn btn-primary btn-sm" onclick="addNewItem('appointments')">
+                                    <i class="fas fa-plus"></i> Add Appointment
+                                </button>
+                            </div>
+                            <div id="appointments-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loading" class="text-center loading">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<!-- Modal for Adding/Editing Items -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemModalTitle">Add Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm">
+                    <div id="itemFormFields"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPatient = null;
+let currentSection = null;
+let editingItem = null;
+let pollingInterval = null;
+let lastClinicalNotesHash = null;
+
+// Simple hash function for comparing clinical notes data
+function hashClinicalNotes(notes) {
+    if (!notes || notes.length === 0) return 'empty';
+    return JSON.stringify(notes.map(n => ({ id: n.id, note: n.note, date: n.date, type: n.type, provider: n.provider })));
+}
+
+// Poll clinical notes for real-time updates
+function pollClinicalNotes() {
+    if (!currentPatient || !currentPatient.id) return;
+    
+    $.get(`/api/patient/${currentPatient.id}/clinical_notes`)
+        .done(function(response) {
+            if (response.success && response.data) {
+                const newHash = hashClinicalNotes(response.data);
+                
+                // Only update if data has changed
+                if (lastClinicalNotesHash !== null && lastClinicalNotesHash !== newHash) {
+                    console.log('Clinical notes updated, refreshing display...');
+                    displayClinicalNotes(response.data);
+                    
+                    // Show a subtle notification
+                    showAlert('Clinical notes updated', 'info', 2000);
+                }
+                
+                lastClinicalNotesHash = newHash;
+            }
+        })
+        .fail(function(xhr, status, error) {
+            // Silently handle errors to avoid spam in console
+            console.debug('Polling error:', error);
+        });
+}
+
+// Start polling when clinical notes tab is shown
+function startClinicalNotesPolling() {
+    if (pollingInterval) return; // Already polling
+    
+    console.log('Starting clinical notes polling...');
+    pollingInterval = setInterval(pollClinicalNotes, 500);
+}
+
+// Stop polling
+function stopClinicalNotesPolling() {
+    if (pollingInterval) {
+        console.log('Stopping clinical notes polling...');
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+}
+
+// Patient search functionality
+$('#patient-search').on('input', function() {
+    const query = $(this).val().trim();
+    if (query.length >= 2) {
+        searchPatients(query);
+    } else {
+        $('#search-results').hide();
+    }
+});
+
+// Tab change event listeners for polling
+$(document).ready(function() {
+    // Listen for tab changes
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const targetTab = $(e.target).attr('data-bs-target');
+        
+        if (targetTab === '#clinical-notes') {
+            startClinicalNotesPolling();
+        } else {
+            stopClinicalNotesPolling();
+        }
+    });
+    
+    // Stop polling when leaving the page
+    $(window).on('beforeunload', function() {
+        stopClinicalNotesPolling();
+    });
+});
+
+// Hide search results when clicking outside
+$(document).on('click', function(event) {
+    if (!$(event.target).closest('#patient-search, #search-results').length) {
+        $('#search-results').hide();
+    }
+});
+
+function searchPatients(query) {
+    $.get('/api/patients/search', { q: query })
+        .done(function(data) {
+            const resultsHtml = data.map(patient => `
+                <div class="search-result-item" onclick="selectPatient('${patient.id}')">
+                    <strong>${patient.name}</strong><br>
+                    <small class="text-muted">DOB: ${formatDate(patient.dob)} | Gender: ${patient.gender}</small>
+                </div>
+            `).join('');
+            
+            $('#search-results').html(resultsHtml).show();
+        })
+        .fail(function() {
+            showAlert('Error searching patients', 'danger');
+        });
+}
+
+function selectPatient(patientId) {
+    $('#search-results').hide();
+    $('#loading').show();
+    
+    $.get(`/api/patients/${patientId}`)
+        .done(function(data) {
+            currentPatient = data;
+            displayPatient(data);
+            $('#loading').hide();
+        })
+        .fail(function() {
+            showAlert('Error loading patient data', 'danger');
+            $('#loading').hide();
+        });
+}
+
+function displayPatient(patient) {
+    // Show selected patient info
+    $('#patient-summary').html(`
+        <strong>${patient.name}</strong><br>
+        <small>DOB: ${formatDate(patient.demographics.date_of_birth)} | 
+               Gender: ${patient.demographics.gender}</small>
+    `);
+    $('#selected-patient-info').show();
+    
+    // Display demographics
+    displayDemographics(patient.demographics);
+    
+    // Display medical sections
+    displayMedications(patient.medications);
+    displayConditions(patient.conditions);
+    displayDiagnosis(patient.diagnosis);
+    displayClinicalNotes(patient.clinical_notes);
+    displayAllergies(patient.allergies);
+    displayImmunizations(patient.immunizations);
+    displayAppointments(patient.appointments);
+    
+    $('#patient-details').show().addClass('fade-in');
+}
+
+function displayDemographics(demographics) {
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>First Name:</strong> <span data-field="first_name">${demographics.first_name}</span></p>
+                <p><strong>Last Name:</strong> <span data-field="last_name">${demographics.last_name}</span></p>
+                <p><strong>Date of Birth:</strong> <span data-field="date_of_birth">${formatDate(demographics.date_of_birth)}</span></p>
+                <p><strong>Gender:</strong> <span data-field="gender">${demographics.gender}</span></p>
+                <p><strong>Phone:</strong> <span data-field="phone">${demographics.phone}</span></p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Email:</strong> <span data-field="email">${demographics.email}</span></p>
+                <p><strong>Address:</strong> <span data-field="address">${demographics.address}</span></p>
+                <p><strong>Emergency Contact:</strong> <span data-field="emergency_contact">${demographics.emergency_contact}</span></p>
+                <p><strong>Insurance:</strong> <span data-field="insurance">${demographics.insurance}</span></p>
+            </div>
+        </div>
+    `;
+    $('#demographics-content').html(html);
+}
+
+function displayMedications(medications) {
+    if (!medications || medications.length === 0) {
+        $('#medications-content').html('<p class="text-muted">No medications recorded.</p>');
+        return;
+    }
+    
+    const html = medications.map(med => `
+        <div class="card mb-2" data-item-id="${med.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${med.name} ${med.dosage}</h6>
+                        <p class="card-text">
+                            <strong>Frequency:</strong> ${med.frequency}<br>
+                            <strong>Start Date:</strong> ${formatDate(med.start_date)}<br>
+                            <strong>Prescribing Doctor:</strong> ${med.prescribing_doctor}<br>
+                            <span class="badge bg-${med.status === 'Active' ? 'success' : 'secondary'}">${med.status}</span>
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('medications', '${med.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('medications', '${med.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#medications-content').html(html);
+}
+
+function displayConditions(conditions) {
+    if (!conditions || conditions.length === 0) {
+        $('#conditions-content').html('<p class="text-muted">No conditions recorded.</p>');
+        return;
+    }
+    
+    const html = conditions.map(condition => `
+        <div class="card mb-2" data-item-id="${condition.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${condition.name}</h6>
+                        <p class="card-text">
+                            <strong>ICD Code:</strong> ${condition.icd_code}<br>
+                            <strong>Date Diagnosed:</strong> ${formatDate(condition.date_diagnosed)}<br>
+                            <strong>Severity:</strong> ${condition.severity}<br>
+                            <span class="badge bg-${condition.status === 'Active' ? 'warning' : 'secondary'}">${condition.status}</span>
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('conditions', '${condition.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('conditions', '${condition.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#conditions-content').html(html);
+}
+
+function displayDiagnosis(diagnosis) {
+    if (!diagnosis || diagnosis.length === 0) {
+        $('#diagnosis-content').html('<p class="text-muted">No diagnosis recorded.</p>');
+        return;
+    }
+    
+    const html = diagnosis.map(diag => `
+        <div class="card mb-2" data-item-id="${diag.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">Diagnosis - ${formatDate(diag.date)}</h6>
+                        <p class="card-text">
+                            <strong>Primary:</strong> ${diag.primary_diagnosis}<br>
+                            ${diag.secondary_diagnosis ? `<strong>Secondary:</strong> ${diag.secondary_diagnosis}<br>` : ''}
+                            <strong>Provider:</strong> ${diag.provider}<br>
+                            <strong>Notes:</strong> ${diag.notes}
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('diagnosis', '${diag.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('diagnosis', '${diag.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#diagnosis-content').html(html);
+}
+
+function displayClinicalNotes(notes) {
+    if (!notes || notes.length === 0) {
+        $('#clinical-notes-content').html('<p class="text-muted">No clinical notes recorded.</p>');
+        lastClinicalNotesHash = hashClinicalNotes(notes);
+        return;
+    }
+    
+    const html = notes.map(note => `
+        <div class="card mb-2" data-item-id="${note.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${note.type} - ${formatDate(note.date)}</h6>
+                        <p class="card-text">
+                            <strong>Provider:</strong> ${note.provider}<br>
+                            <strong>Note:</strong> ${note.note}
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('clinical_notes', '${note.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('clinical_notes', '${note.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#clinical-notes-content').html(html);
+    lastClinicalNotesHash = hashClinicalNotes(notes);
+}
+
+function displayAllergies(allergies) {
+    if (!allergies || allergies.length === 0) {
+        $('#allergies-content').html('<p class="text-muted">No allergies recorded.</p>');
+        return;
+    }
+    
+    const html = allergies.map(allergy => `
+        <div class="card mb-2" data-item-id="${allergy.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${allergy.allergen}</h6>
+                        <p class="card-text">
+                            <strong>Reaction:</strong> ${allergy.reaction}<br>
+                            <strong>Severity:</strong> <span class="badge bg-${allergy.severity === 'Severe' ? 'danger' : allergy.severity === 'Moderate' ? 'warning' : 'success'}">${allergy.severity}</span><br>
+                            <strong>Date Identified:</strong> ${formatDate(allergy.date_identified)}
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('allergies', '${allergy.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('allergies', '${allergy.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#allergies-content').html(html);
+}
+
+function displayImmunizations(immunizations) {
+    if (!immunizations || immunizations.length === 0) {
+        $('#immunizations-content').html('<p class="text-muted">No immunizations recorded.</p>');
+        return;
+    }
+    
+    const html = immunizations.map(immun => `
+        <div class="card mb-2" data-item-id="${immun.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${immun.vaccine}</h6>
+                        <p class="card-text">
+                            <strong>Date Administered:</strong> ${formatDate(immun.date_administered)}<br>
+                            <strong>Provider:</strong> ${immun.provider}<br>
+                            <strong>Lot Number:</strong> ${immun.lot_number}
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('immunizations', '${immun.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('immunizations', '${immun.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#immunizations-content').html(html);
+}
+
+function displayAppointments(appointments) {
+    if (!appointments || appointments.length === 0) {
+        $('#appointments-content').html('<p class="text-muted">No appointments scheduled.</p>');
+        return;
+    }
+    
+    const html = appointments.map(appt => `
+        <div class="card mb-2" data-item-id="${appt.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="card-title">${appt.type} - ${formatDate(appt.date)} at ${appt.time}</h6>
+                        <p class="card-text">
+                            <strong>Provider:</strong> ${appt.provider}<br>
+                            <strong>Status:</strong> <span class="badge bg-${appt.status === 'Scheduled' ? 'primary' : 'secondary'}">${appt.status}</span><br>
+                            <strong>Notes:</strong> ${appt.notes}
+                        </p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary btn-sm edit-btn" onclick="editItem('appointments', '${appt.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm delete-btn" onclick="deleteItem('appointments', '${appt.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    $('#appointments-content').html(html);
+}
+
+function toggleEdit(section) {
+    // This function would enable inline editing for demographics
+    // For simplicity, we'll show an alert
+    showAlert('Demographics editing feature coming soon!', 'info');
+}
+
+function addNewItem(section) {
+    currentSection = section;
+    editingItem = null;
+    showItemModal(section, null);
+}
+
+function editItem(section, itemId) {
+    currentSection = section;
+    const item = currentPatient[section].find(item => item.id === itemId);
+    editingItem = item;
+    showItemModal(section, item);
+}
+
+function showItemModal(section, item) {
+    const isEdit = item !== null;
+    $('#itemModalTitle').text(isEdit ? `Edit ${section.slice(0, -1)}` : `Add ${section.slice(0, -1)}`);
+    
+    let fieldsHtml = '';
+    
+    switch(section) {
+        case 'medications':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Medication Name</label>
+                            <input type="text" class="form-control" name="name" value="${item?.name || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Dosage</label>
+                            <input type="text" class="form-control" name="dosage" value="${item?.dosage || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Frequency</label>
+                            <input type="text" class="form-control" name="frequency" value="${item?.frequency || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" name="start_date" value="${item?.start_date || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Prescribing Doctor</label>
+                            <input type="text" class="form-control" name="prescribing_doctor" value="${item?.prescribing_doctor || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" name="status" required>
+                                <option value="Active" ${item?.status === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Inactive" ${item?.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                                <option value="Discontinued" ${item?.status === 'Discontinued' ? 'selected' : ''}>Discontinued</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'conditions':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Condition Name</label>
+                            <input type="text" class="form-control" name="name" value="${item?.name || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">ICD Code</label>
+                            <input type="text" class="form-control" name="icd_code" value="${item?.icd_code || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date Diagnosed</label>
+                            <input type="date" class="form-control" name="date_diagnosed" value="${item?.date_diagnosed || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Severity</label>
+                            <select class="form-control" name="severity" required>
+                                <option value="Mild" ${item?.severity === 'Mild' ? 'selected' : ''}>Mild</option>
+                                <option value="Moderate" ${item?.severity === 'Moderate' ? 'selected' : ''}>Moderate</option>
+                                <option value="Severe" ${item?.severity === 'Severe' ? 'selected' : ''}>Severe</option>
+                                <option value="Controlled" ${item?.severity === 'Controlled' ? 'selected' : ''}>Controlled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" name="status" required>
+                                <option value="Active" ${item?.status === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Resolved" ${item?.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                                <option value="Chronic" ${item?.status === 'Chronic' ? 'selected' : ''}>Chronic</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'diagnosis':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" value="${item?.date || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Provider</label>
+                            <input type="text" class="form-control" name="provider" value="${item?.provider || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Primary Diagnosis</label>
+                            <input type="text" class="form-control" name="primary_diagnosis" value="${item?.primary_diagnosis || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Secondary Diagnosis</label>
+                            <input type="text" class="form-control" name="secondary_diagnosis" value="${item?.secondary_diagnosis || ''}">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="3">${item?.notes || ''}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'clinical_notes':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" value="${item?.date || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Provider</label>
+                            <input type="text" class="form-control" name="provider" value="${item?.provider || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Note Type</label>
+                            <select class="form-control" name="type" required>
+                                <option value="Progress Note" ${item?.type === 'Progress Note' ? 'selected' : ''}>Progress Note</option>
+                                <option value="Consultation" ${item?.type === 'Consultation' ? 'selected' : ''}>Consultation</option>
+                                <option value="Assessment" ${item?.type === 'Assessment' ? 'selected' : ''}>Assessment</option>
+                                <option value="Treatment Plan" ${item?.type === 'Treatment Plan' ? 'selected' : ''}>Treatment Plan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Clinical Note</label>
+                            <textarea class="form-control" name="note" rows="5" required>${item?.note || ''}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'allergies':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Allergen</label>
+                            <input type="text" class="form-control" name="allergen" value="${item?.allergen || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date Identified</label>
+                            <input type="date" class="form-control" name="date_identified" value="${item?.date_identified || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Severity</label>
+                            <select class="form-control" name="severity" required>
+                                <option value="Mild" ${item?.severity === 'Mild' ? 'selected' : ''}>Mild</option>
+                                <option value="Moderate" ${item?.severity === 'Moderate' ? 'selected' : ''}>Moderate</option>
+                                <option value="Severe" ${item?.severity === 'Severe' ? 'selected' : ''}>Severe</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Reaction</label>
+                            <input type="text" class="form-control" name="reaction" value="${item?.reaction || ''}" required>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'immunizations':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Vaccine</label>
+                            <input type="text" class="form-control" name="vaccine" value="${item?.vaccine || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date Administered</label>
+                            <input type="date" class="form-control" name="date_administered" value="${item?.date_administered || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Provider</label>
+                            <input type="text" class="form-control" name="provider" value="${item?.provider || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Lot Number</label>
+                            <input type="text" class="form-control" name="lot_number" value="${item?.lot_number || ''}" required>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+        case 'appointments':
+            fieldsHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" value="${item?.date || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Time</label>
+                            <input type="time" class="form-control" name="time" value="${item?.time || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Provider</label>
+                            <input type="text" class="form-control" name="provider" value="${item?.provider || ''}" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-control" name="type" required>
+                                <option value="Follow-up" ${item?.type === 'Follow-up' ? 'selected' : ''}>Follow-up</option>
+                                <option value="Consultation" ${item?.type === 'Consultation' ? 'selected' : ''}>Consultation</option>
+                                <option value="Routine Check" ${item?.type === 'Routine Check' ? 'selected' : ''}>Routine Check</option>
+                                <option value="Emergency" ${item?.type === 'Emergency' ? 'selected' : ''}>Emergency</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" name="status" required>
+                                <option value="Scheduled" ${item?.status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                                <option value="Completed" ${item?.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                <option value="Cancelled" ${item?.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                <option value="No Show" ${item?.status === 'No Show' ? 'selected' : ''}>No Show</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="3">${item?.notes || ''}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+    }
+    
+    $('#itemFormFields').html(fieldsHtml);
+    $('#itemModal').modal('show');
+}
+
+function saveItem() {
+    const formData = new FormData($('#itemForm')[0]);
+    const itemData = {};
+    
+    for (let [key, value] of formData.entries()) {
+        itemData[key] = value;
+    }
+    
+    if (editingItem) {
+        itemData.id = editingItem.id;
+    }
+    
+    const action = editingItem ? 'update' : 'add';
+    
+    $.ajax({
+        url: `/api/patient/${currentPatient.id}/${currentSection}`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            action: action,
+            item: itemData
+        }),
+        success: function(response) {
+            if (response.success) {
+                showAlert(`${currentSection.slice(0, -1)} ${action}ed successfully!`, 'success');
+                $('#itemModal').modal('hide');
+                // Refresh patient data
+                selectPatient(currentPatient.id);
+            } else {
+                showAlert('Error saving item', 'danger');
+            }
+        },
+        error: function() {
+            showAlert('Error saving item', 'danger');
+        }
+    });
+}
+
+function deleteItem(section, itemId) {
+    if (confirm('Are you sure you want to delete this item?')) {
+        // Map section names to proper API endpoints
+        const endpointMap = {
+            'medications': 'medications',
+            'conditions': 'conditions', 
+            'diagnosis': 'diagnoses',
+            'clinical_notes': 'clinical-notes',
+            'allergies': 'allergies',
+            'immunizations': 'immunizations',
+            'appointments': 'appointments'
+        };
+        
+        const endpoint = endpointMap[section];
+        if (!endpoint) {
+            showAlert('Invalid section for deletion', 'danger');
+            return;
+        }
+        
+        $.ajax({
+            url: `/api/${endpoint}/${itemId}`,
+            method: 'DELETE',
+            success: function(response) {
+                if (response.success) {
+                    showAlert(`${section.slice(0, -1)} deleted successfully!`, 'success');
+                    // Refresh patient data
+                    selectPatient(currentPatient.id);
+                } else {
+                    showAlert('Error deleting item', 'danger');
+                }
+            },
+            error: function() {
+                showAlert('Error deleting item', 'danger');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

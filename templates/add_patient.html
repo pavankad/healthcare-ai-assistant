@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Add Patient - EMR System{% endblock %}
+
+{% block content %}
+<div id="alerts-container"></div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-user-plus"></i> Add New Patient</h5>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+            <div class="card-body">
+                <form id="addPatientForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">
+                                    <i class="fas fa-user"></i> First Name *
+                                </label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">
+                                    <i class="fas fa-user"></i> Last Name *
+                                </label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date_of_birth" class="form-label">
+                                    <i class="fas fa-calendar"></i> Date of Birth *
+                                </label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="gender" class="form-label">
+                                    <i class="fas fa-venus-mars"></i> Gender *
+                                </label>
+                                <select class="form-control" id="gender" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                    <option value="Prefer not to say">Prefer not to say</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">
+                                    <i class="fas fa-phone"></i> Phone Number
+                                </label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       placeholder="(555) 123-4567">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope"></i> Email Address
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="patient@email.com">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="address" class="form-label">
+                                    <i class="fas fa-map-marker-alt"></i> Address
+                                </label>
+                                <textarea class="form-control" id="address" name="address" rows="2" 
+                                          placeholder="Street, City, State, ZIP"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="emergency_contact" class="form-label">
+                                    <i class="fas fa-phone-alt"></i> Emergency Contact
+                                </label>
+                                <input type="text" class="form-control" id="emergency_contact" name="emergency_contact" 
+                                       placeholder="Name - Phone Number">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="insurance" class="form-label">
+                                    <i class="fas fa-id-card"></i> Insurance Information
+                                </label>
+                                <input type="text" class="form-control" id="insurance" name="insurance" 
+                                       placeholder="Insurance Provider - Policy Number">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-save"></i> Add Patient
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loading" class="text-center loading">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#addPatientForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Disable submit button to prevent double submission
+        $('#submitBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Adding Patient...');
+        
+        // Collect form data
+        const formData = new FormData(this);
+        const patientData = {};
+        
+        for (let [key, value] of formData.entries()) {
+            patientData[key] = value;
+        }
+        
+        // Show loading
+        $('#loading').show();
+        
+        // Submit patient data
+        $.ajax({
+            url: '/api/patients',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(patientData),
+            success: function(response) {
+                if (response.success) {
+                    showAlert('Patient added successfully!', 'success');
+                    setTimeout(function() {
+                        window.location.href = '/dashboard';
+                    }, 2000);
+                } else {
+                    showAlert('Failed to add patient: ' + (response.error || 'Unknown error'), 'danger');
+                    $('#submitBtn').prop('disabled', false).html('<i class="fas fa-save"></i> Add Patient');
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Failed to add patient';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMessage = response.error || errorMessage;
+                } catch (e) {
+                    // Use default error message
+                }
+                
+                showAlert(errorMessage, 'danger');
+                $('#submitBtn').prop('disabled', false).html('<i class="fas fa-save"></i> Add Patient');
+            },
+            complete: function() {
+                $('#loading').hide();
+            }
+        });
+    });
+    
+    // Phone number formatting
+    $('#phone').on('input', function() {
+        let value = this.value.replace(/\D/g, '');
+        if (value.length >= 6) {
+            value = value.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+        } else if (value.length >= 3) {
+            value = value.replace(/(\d{3})(\d+)/, '($1) $2');
+        }
+        this.value = value;
+    });
+    
+    // Form validation
+    $('#addPatientForm input[required]').on('blur', function() {
+        if (!this.value.trim()) {
+            $(this).addClass('is-invalid');
+        } else {
+            $(this).removeClass('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-label {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.form-control:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.card {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.btn-primary:disabled {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+}
+
+hr {
+    border-color: #dee2e6;
+    margin: 1.5rem 0;
+}
+</style>
+{% endblock %}
