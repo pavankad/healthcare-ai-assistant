@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-ray Analysis - Healthcare AI Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .xray-upload-zone {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .xray-upload-zone:hover {
+            border-color: #0056b3;
+            background-color: #e3f2fd;
+        }
+        
+        .xray-upload-zone.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        
+        .analysis-results {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .pathology-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .analysis-section {
+            border-left: 4px solid rgba(255, 255, 255, 0.3);
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-section h6 {
+            color: #fff !important;
+            font-size: 1.1rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .section-content {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.6;
+        }
+        
+        .section-content div {
+            padding: 2px 0;
+        }
+        
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring-circle {
+            fill: transparent;
+            stroke: #007bff;
+            stroke-width: 4;
+            stroke-dasharray: 188.5;
+            stroke-dashoffset: 188.5;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3">🩻 X-ray Analysis</h1>
+                    <a href="/dashboard?patient_id={{ patient.id }}" class="btn btn-outline-secondary">← Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected Patient Info -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">👤 Selected Patient</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>{{ patient.first_name }} {{ patient.last_name }}</strong><br>
+                                <small class="text-muted">Patient ID: {{ patient.id }}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    DOB: {{ patient.date_of_birth }}<br>
+                                    Gender: {{ patient.gender }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- X-ray Upload Section -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Upload X-ray Image</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="xray-upload-zone" id="uploadZone">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h5>Drag and drop X-ray image here</h5>
+                                <p class="text-muted">or click to select files</p>
+                                <small class="text-muted">Supported formats: JPG, PNG, DICOM</small>
+                            </div>
+                            <input type="file" id="xrayFile" accept="image/*,.dcm" style="display: none;">
+                        </div>
+                        
+                        <!-- Selected File Info -->
+                        <div id="fileInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>Selected File:</strong> <span id="fileName"></span>
+                                <br>
+                                <strong>Size:</strong> <span id="fileSize"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Button -->
+                        <div class="mt-3">
+                            <button id="processBtn" class="btn btn-primary btn-lg" disabled>
+                                <i class="fas fa-microscope"></i> Process X-ray
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Processing Status -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Processing Status</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="statusIdle">
+                            <i class="fas fa-upload fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Ready to process X-ray</p>
+                        </div>
+                        
+                        <div id="statusProcessing" style="display: none;">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <p>Analyzing X-ray with AI...</p>
+                            <small class="text-muted">This may take a few moments</small>
+                        </div>
+                        
+                        <div id="statusComplete" style="display: none;">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="text-success">Analysis Complete!</p>
+                        </div>
+                        
+                        <div id="statusError" style="display: none;">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                            <p class="text-danger">Processing Failed</p>
+                            <small id="errorMessage" class="text-muted"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results -->
+        <div id="analysisResults" class="row mt-4" style="display: none;">
+            <div class="col-12">
+                <div class="analysis-results">
+                    <h4 class="mb-4">🧠 AI Analysis Results</h4>
+                    
+                    <!-- Significant Findings -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>🔍 Significant Findings</h5>
+                            <div id="findingsList">
+                                <!-- Findings will be populated here -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>📊 Pathology Scores</h5>
+                            <div id="pathologyScores">
+                                <!-- Scores will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- GPT-4 Analysis -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>🤖 GPT-4 Medical Analysis</h5>
+                            <div class="pathology-card">
+                                <div id="gpt4Analysis">
+                                    <!-- GPT-4 analysis will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Created Records -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small>📝 Clinical Note: <span id="clinicalNoteId"></span></small>
+                                    <br>
+                                    <small>🏥 Conditions Created: <span id="conditionsCount"></span></small>
+                                </div>
+                                <a href="/dashboard?patient_id={{ patient.id }}" class="btn btn-light btn-sm">View in EMR →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let selectedFile = null;
+        let patientId = "{{ patient.id }}";  // Get patient ID from template
+        
+        // Load components on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('xrayFile');
+            const processBtn = document.getElementById('processBtn');
+            
+            // Upload zone click
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            // File selection
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Drag and drop
+            uploadZone.addEventListener('dragover', handleDragOver);
+            uploadZone.addEventListener('dragleave', handleDragLeave);
+            uploadZone.addEventListener('drop', handleDrop);
+            
+            // Process button
+            processBtn.addEventListener('click', processXray);
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectFile(file);
+            }
+        }
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('uploadZone').classList.add('dragover');
+        }
+        
+        function handleDragLeave(event) {
+            event.preventDefault();
+            document.getElementById('uploadZone').classList.remove('dragover');
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('uploadZone').classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                selectFile(files[0]);
+            }
+        }
+        
+        function selectFile(file) {
+            selectedFile = file;
+            
+            // Show file info
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fileInfo').style.display = 'block';
+            
+            updateProcessButtonState();
+        }
+        
+        function updateProcessButtonState() {
+            const processBtn = document.getElementById('processBtn');
+            // Only check if file is selected since patient is already determined
+            processBtn.disabled = !selectedFile;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function processXray() {
+            if (!selectedFile) {
+                showAlert('Please select an X-ray image', 'warning');
+                return;
+            }
+            
+            // Update UI to show processing state
+            setProcessingState('processing');
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('xray_image', selectedFile);
+            
+            // Send to API
+            fetch(`/api/patients/${patientId}/process_xray`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'  // Include cookies for session authentication
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Handle authentication redirects or other HTTP errors
+                    if (response.status === 302 || response.status === 401) {
+                        throw new Error('Authentication required. Please log in again.');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                setProcessingState('complete');
+                displayResults(data);
+            })
+            .catch(error => {
+                console.error('Error processing X-ray:', error);
+                setProcessingState('error');
+                document.getElementById('errorMessage').textContent = error.message;
+            });
+        }
+        
+        function setProcessingState(state) {
+            // Hide all status divs
+            document.getElementById('statusIdle').style.display = 'none';
+            document.getElementById('statusProcessing').style.display = 'none';
+            document.getElementById('statusComplete').style.display = 'none';
+            document.getElementById('statusError').style.display = 'none';
+            
+            // Show appropriate status
+            document.getElementById(`status${state.charAt(0).toUpperCase() + state.slice(1)}`).style.display = 'block';
+            
+            // Enable/disable process button
+            document.getElementById('processBtn').disabled = (state === 'processing');
+        }
+        
+        function displayResults(data) {
+            // Show results section
+            document.getElementById('analysisResults').style.display = 'block';
+            
+            // Display significant findings
+            const findingsList = document.getElementById('findingsList');
+            findingsList.innerHTML = '';
+            
+            if (Object.keys(data.significant_findings).length > 0) {
+                Object.entries(data.significant_findings).forEach(([pathology, score]) => {
+                    const finding = document.createElement('div');
+                    finding.className = 'pathology-card';
+                    finding.innerHTML = `
+                        <strong>${pathology}</strong>
+                        <div class="progress mt-2">
+                            <div class="progress-bar bg-warning" style="width: ${(score * 100).toFixed(1)}%"></div>
+                        </div>
+                        <small>Score: ${score.toFixed(4)}</small>
+                    `;
+                    findingsList.appendChild(finding);
+                });
+            } else {
+                findingsList.innerHTML = '<div class="pathology-card">No significant findings detected</div>';
+            }
+            
+            // Display all pathology scores (top 5)
+            const pathologyScores = document.getElementById('pathologyScores');
+            pathologyScores.innerHTML = '';
+            
+            Object.entries(data.pathology_scores)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5)
+                .forEach(([pathology, score]) => {
+                    const scoreItem = document.createElement('div');
+                    scoreItem.className = 'pathology-card';
+                    scoreItem.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${pathology}</span>
+                            <strong>${score.toFixed(4)}</strong>
+                        </div>
+                    `;
+                    pathologyScores.appendChild(scoreItem);
+                });
+            
+            // Display GPT-4 analysis with better formatting
+            const analysisElement = document.getElementById('gpt4Analysis');
+            analysisElement.innerHTML = formatStructuredAnalysis(data.gpt4_analysis);
+            
+            // Display created records info
+            document.getElementById('clinicalNoteId').textContent = data.clinical_note_id;
+            document.getElementById('conditionsCount').textContent = data.created_conditions.length;
+            
+            // Scroll to results
+            document.getElementById('analysisResults').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function formatStructuredAnalysis(analysisText) {
+            // Format the structured analysis for better readability
+            if (!analysisText) return 'No analysis available';
+            
+            // Split by section dividers
+            const sections = analysisText.split('══════════════════════════════════════════════════════════════════════════════');
+            
+            let formattedHtml = '';
+            
+            sections.forEach(section => {
+                const trimmedSection = section.trim();
+                if (!trimmedSection) return;
+                
+                // Check if this is a section header
+                const lines = trimmedSection.split('\n');
+                const firstLine = lines[0].trim();
+                
+                if (firstLine && firstLine.length < 50 && lines.length > 1) {
+                    // This looks like a section header
+                    formattedHtml += `<div class="analysis-section mb-4">`;
+                    formattedHtml += `<h6 class="text-primary fw-bold mb-3">${firstLine}</h6>`;
+                    
+                    // Process the rest of the lines
+                    const content = lines.slice(1).join('\n').trim();
+                    if (content) {
+                        formattedHtml += `<div class="section-content">`;
+                        
+                        // Format bullet points and content
+                        const formattedContent = content
+                            .replace(/^• /gm, '<div class="mb-1">• ')
+                            .replace(/\n• /g, '</div>\n<div class="mb-1">• ')
+                            .replace(/\n([^•])/g, '</div>\n<div class="mb-1">$1')
+                            .replace(/\n\n/g, '</div>\n\n<div class="mb-1">')
+                            + '</div>';
+                        
+                        formattedHtml += formattedContent;
+                        formattedHtml += `</div>`;
+                    }
+                    formattedHtml += `</div>`;
+                } else {
+                    // Regular content section
+                    formattedHtml += `<div class="mb-3">`;
+                    formattedHtml += trimmedSection.replace(/\n/g, '<br>');
+                    formattedHtml += `</div>`;
+                }
+            });
+            
+            return formattedHtml || analysisText.replace(/\n/g, '<br>');
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

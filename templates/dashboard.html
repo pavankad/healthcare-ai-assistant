@@ -11,9 +11,14 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5><i class="fas fa-search"></i> Patient Search</h5>
-                <a href="{{ url_for('add_patient') }}" class="btn btn-success">
-                    <i class="fas fa-user-plus"></i> Add New Patient
-                </a>
+                <div>
+                    <button id="xrayAnalysisBtn" class="btn btn-primary me-2" onclick="openXrayAnalysis()" disabled>
+                        <i class="fas fa-x-ray"></i> X-ray Analysis
+                    </button>
+                    <a href="{{ url_for('add_patient') }}" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Add New Patient
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -59,8 +64,18 @@
     <div class="row">
         <div class="col-12">
             <div class="card section-card">
-                <div class="card-header">
-                    <h5><i class="fas fa-stethoscope"></i> Medical Information</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-stethoscope"></i> Medical Information</h5>
+                        <div id="recordingStatus" class="ms-3" style="display: none;">
+                            <small class="text-danger">
+                                <i class="fas fa-circle recording-indicator"></i> Recording...
+                            </small>
+                        </div>
+                    </div>
+                    <button id="microphoneBtn" class="btn btn-outline-danger" onclick="toggleRecording()" disabled title="Voice Recording">
+                        <i class="fas fa-microphone"></i> <span id="micButtonText">Start Recording</span>
+                    </button>
                 </div>
                 <div class="card-body">
                     <ul class="nav nav-tabs mb-3" id="medical-tabs" role="tablist">
@@ -215,13 +230,58 @@
 
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.recording-indicator {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+#microphoneBtn.recording {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+#microphoneBtn.recording:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    color: white;
+}
+
+.microphone-permissions-alert {
+    border-left: 4px solid #dc3545;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
+<script src="/static/js/audio-recorder.js"></script>
 <script>
 let currentPatient = null;
 let currentSection = null;
 let editingItem = null;
 let pollingInterval = null;
 let lastClinicalNotesHash = null;
+
+// Voice recording variables
+let isRecording = false;
+let currentNoteId = null;
+let recordingEventSource = null;
+let audioRecorder = null;
 
 // Simple hash function for comparing clinical notes data
 function hashClinicalNotes(notes) {
@@ -273,6 +333,27 @@ function stopClinicalNotesPolling() {
     }
 }
 
+// Handle transcription added events
+window.addEventListener('transcriptionAdded', function(event) {
+    console.log('Transcription added:', event.detail.transcription);
+    
+    // Immediately refresh clinical notes if we're viewing them
+    if (currentPatient && currentPatient.id) {
+        const activeTab = $('.nav-link.active').attr('data-bs-target');
+        if (activeTab === '#clinical-notes') {
+            pollClinicalNotes();
+        }
+    }
+});
+
+// Initialize when page loads
+$(document).ready(function() {
+    // Initialize audio recorder event listeners
+    if (window.EMRAudioRecorder) {
+        console.log('Audio recorder available');
+    }
+});
+
 // Patient search functionality
 $('#patient-search').on('input', function() {
     const query = $(this).val().trim();
@@ -300,6 +381,12 @@ $(document).ready(function() {
     $(window).on('beforeunload', function() {
         stopClinicalNotesPolling();
     });
+    
+    // Auto-select patient if patient_id is provided in URL
+    const selectedPatientId = "{{ selected_patient_id }}";
+    if (selectedPatientId && selectedPatientId !== "None") {
+        selectPatient(selectedPatientId);
+    }
 });
 
 // Hide search results when clicking outside
@@ -335,11 +422,167 @@ function selectPatient(patientId) {
             currentPatient = data;
             displayPatient(data);
             $('#loading').hide();
+            
+            // Enable X-ray analysis button when patient is selected
+            $('#xrayAnalysisBtn').prop('disabled', false);
+            // Enable microphone button when patient is selected
+            $('#microphoneBtn').prop('disabled', false);
         })
         .fail(function() {
             showAlert('Error loading patient data', 'danger');
             $('#loading').hide();
         });
+}
+
+// Voice Recording Functions
+function toggleRecording() {
+    if (!currentPatient || !currentPatient.id) {
+        showAlert('Please select a patient first', 'warning');
+        return;
+    }
+    
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+function startRecording() {
+    // Initialize audio recorder if not already done
+    if (!audioRecorder) {
+        try {
+            audioRecorder = new EMRAudioRecorder();
+        } catch (error) {
+            showAlert('Audio recording not supported in this browser', 'danger');
+            return;
+        }
+    }
+    
+    // Start the recording session on the backend first
+    $.ajax({
+        url: '/api/voice/start-recording',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            patient_id: currentPatient.id,
+            provider: 'Voice Transcription'
+        }),
+        success: function(response) {
+            if (response.success) {
+                isRecording = true;
+                currentNoteId = response.note_id;
+                
+                // Start browser audio recording
+                audioRecorder.startRecording(currentPatient.id, currentNoteId)
+                    .then(() => {
+                        // Update UI
+                        $('#microphoneBtn').addClass('recording').removeClass('btn-outline-danger').addClass('btn-danger');
+                        $('#micButtonText').text('Stop Recording');
+                        $('#recordingStatus').show();
+                        
+                        // Start listening for transcription updates
+                        startTranscriptionListener();
+                        
+                        showAlert('Voice recording started', 'success');
+                    })
+                    .catch((error) => {
+                        console.error('Audio recording error:', error);
+                        // Stop the backend session since audio failed
+                        stopRecordingSession();
+                        showAlert('Microphone access denied. Please allow microphone access and try again.', 'danger');
+                    });
+            } else {
+                showAlert('Failed to start recording: ' + (response.error || 'Unknown error'), 'danger');
+            }
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error starting recording: ' + error, 'danger');
+        }
+    });
+}
+
+function stopRecording() {
+    // Stop browser audio recording
+    if (audioRecorder) {
+        audioRecorder.stopRecording();
+    }
+    
+    // Stop the backend session
+    stopRecordingSession();
+}
+
+function stopRecordingSession() {
+    $.ajax({
+        url: '/api/voice/stop-recording',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            note_id: currentNoteId
+        }),
+        success: function(response) {
+            isRecording = false;
+            currentNoteId = null;
+            
+            // Update UI
+            $('#microphoneBtn').removeClass('recording btn-danger').addClass('btn-outline-danger');
+            $('#micButtonText').text('Start Recording');
+            $('#recordingStatus').hide();
+            
+            // Stop listening for transcription updates
+            stopTranscriptionListener();
+            
+            // Refresh clinical notes to show the updated transcription
+            if (currentPatient && currentPatient.id) {
+                selectPatient(currentPatient.id);
+            }
+            
+            showAlert('Voice recording stopped', 'info');
+        },
+        error: function(xhr, status, error) {
+            showAlert('Error stopping recording: ' + error, 'danger');
+            // Reset UI anyway
+            isRecording = false;
+            currentNoteId = null;
+            $('#microphoneBtn').removeClass('recording btn-danger').addClass('btn-outline-danger');
+            $('#micButtonText').text('Start Recording');
+            $('#recordingStatus').hide();
+            stopTranscriptionListener();
+        }
+    });
+}
+
+function startTranscriptionListener() {
+    if (!currentNoteId) return;
+    
+    // Use Server-Sent Events to listen for real-time transcription updates
+    recordingEventSource = new EventSource(`/api/voice/transcription-stream/${currentNoteId}`);
+    
+    recordingEventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'transcription_update') {
+            // Refresh clinical notes to show the latest transcription
+            if (currentPatient && currentPatient.id) {
+                // Only refresh if we're on the clinical notes tab
+                const activeTab = $('.nav-link.active').attr('data-bs-target');
+                if (activeTab === '#clinical-notes') {
+                    pollClinicalNotes();
+                }
+            }
+        }
+    };
+    
+    recordingEventSource.onerror = function(event) {
+        console.error('Transcription stream error:', event);
+        stopTranscriptionListener();
+    };
+}
+
+function stopTranscriptionListener() {
+    if (recordingEventSource) {
+        recordingEventSource.close();
+        recordingEventSource = null;
+    }
 }
 
 function displayPatient(patient) {
@@ -954,13 +1197,10 @@ function saveItem() {
     const action = editingItem ? 'update' : 'add';
     
     $.ajax({
-        url: `/api/patient/${currentPatient.id}/${currentSection}`,
+        url: `/api/patients/${currentPatient.id}/${currentSection}`,
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({
-            action: action,
-            item: itemData
-        }),
+        data: JSON.stringify(itemData),
         success: function(response) {
             if (response.success) {
                 showAlert(`${currentSection.slice(0, -1)} ${action}ed successfully!`, 'success');
@@ -1013,6 +1253,17 @@ function deleteItem(section, itemId) {
             }
         });
     }
+}
+
+// Function to open X-ray analysis with selected patient
+function openXrayAnalysis() {
+    if (!currentPatient || !currentPatient.id) {
+        showAlert('Please select a patient first', 'warning');
+        return;
+    }
+    
+    // Open X-ray analysis page with patient ID
+    window.location.href = `/xray-analysis?patient_id=${currentPatient.id}`;
 }
 </script>
 {% endblock %}

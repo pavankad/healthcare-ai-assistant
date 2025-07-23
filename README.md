@@ -52,6 +52,20 @@ Each medical section has dedicated RESTful API endpoints:
 - Visual indicators for status and severity levels
 - Professional medical interface with appropriate color coding
 
+### AI-Powered Features
+- **X-Ray Analysis**: AI-powered chest X-ray interpretation using TorchXRayVision and GPT-4
+  - Upload DICOM or image files for analysis
+  - Automated pathology detection and scoring
+  - Structured clinical reports with findings and recommendations
+  - Integration with patient medical records
+
+- **Voice Recording & Transcription**: Real-time speech-to-text for clinical notes
+  - Microphone button in Medical Information section
+  - Real-time transcription using OpenAI Whisper
+  - Automatic clinical note creation during recording
+  - Toggle on/off recording functionality
+  - See [VOICE_RECORDING.md](VOICE_RECORDING.md) for detailed usage instructions
+
 ## Technology Stack
 
 - **Backend**: Python Flask with PostgreSQL
